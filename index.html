@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="物件資料をAIで読み取り、不動産投資の収支とキャッシュフローを試算するWebシステム" />
+<title>不動産収支分析 AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root { --navy:#0B2545; --gold:#C8922A; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#F4F6F9; font-family:'Zen Kaku Gothic New',sans-serif; color:var(--navy); }
+  .wrap { max-width:900px; margin:0 auto; padding:28px 18px 60px; }
+  .kicker { font-size:11px; letter-spacing:2px; font-weight:700; color:var(--gold); text-transform:uppercase; }
+  h1 { font-family:'Outfit',sans-serif; font-size:34px; margin:4px 0 8px; font-weight:800; }
+  .sub { font-size:14px; color:#5A6675; line-height:1.7; margin:0; }
+  .card { background:#fff; border:1px solid #E3E8EF; border-radius:16px; padding:22px; margin:18px 0; box-shadow:0 2px 14px rgba(11,37,69,.05); }
+  .card.dark { background:var(--navy); color:#fff; border-color:var(--navy); }
+  .ctitle { font-weight:700; font-size:16px; padding-bottom:12px; margin-bottom:16px; border-bottom:2px solid var(--gold); display:flex; justify-content:space-between; align-items:center; }
+  .dark .ctitle { color:var(--gold); border-color:rgba(255,255,255,.15); }
+  .drop { border:2px dashed #C3CDDA; border-radius:12px; padding:28px 16px; text-align:center; cursor:pointer; transition:all .15s; background:#FAFBFD; }
+  .drop.over { border-color:var(--gold); background:#FFFBF1; }
+  .drop b { color:var(--navy); }
+  .drop small { color:#6B7785; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px 18px; }
+  .full { grid-column:1 / -1; }
+  label.fl { display:block; font-size:12px; font-weight:600; color:#5A6675; margin-bottom:5px; }
+  input.in { width:100%; padding:9px 11px; border:1px solid #D4DBE4; border-radius:8px; font-size:14px; font-family:inherit; color:var(--navy); }
+  input.ai { background:#FFF7DB; }
+  .btn { width:100%; background:var(--navy); color:#fff; border:none; border-radius:10px; padding:13px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; margin-top:16px; }
+  .btn:disabled { opacity:.55; cursor:default; }
+  .ghost { background:transparent; border:1px solid var(--gold); color:var(--gold); border-radius:8px; padding:5px 12px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .chip { display:inline-flex; align-items:center; gap:6px; background:#EEF3FB; padding:5px 10px; border-radius:20px; font-size:12px; font-weight:600; margin:4px 4px 0 0; }
+  .chip button { border:none; background:transparent; color:#C0392B; cursor:pointer; font-size:16px; padding:0; }
+  .status { margin-top:12px; padding:10px 14px; border-radius:8px; font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px; }
+  .st-info{background:#EEF3FB;color:var(--navy);} .st-ok{background:#E8F6EE;color:#1E7A47;}
+  .st-warn{background:#FFF6E5;color:#9A6B00;} .st-error{background:#FCEBEA;color:#C0392B;}
+  .spin { width:14px;height:14px;border:2px solid rgba(0,0,0,.15);border-top-color:var(--navy);border-radius:50%;display:inline-block;animation:sp .7s linear infinite; }
+  @keyframes sp { to { transform:rotate(360deg); } }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { background:#F1F4F8; color:#5A6675; font-weight:700; padding:8px 6px; font-size:11px; text-align:left; white-space:nowrap; border-bottom:1px solid #E3E8EF; }
+  td { padding:5px 6px; border-bottom:1px solid #EEF1F5; }
+  .dark th { background:transparent; color:var(--gold); border-color:rgba(255,255,255,.15); }
+  .dark td { border-color:rgba(255,255,255,.1); font-size:14px; }
+  td input { width:84px; padding:6px 7px; border:1px solid #D4DBE4; border-radius:6px; font-size:13px; font-family:inherit; }
+  td input.num { text-align:right; }
+  .delx { border:none; background:transparent; color:#C0392B; cursor:pointer; font-size:17px; }
+  .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  .kpi { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.15); border-radius:12px; padding:14px 12px; text-align:center; }
+  .kpi.acc { border-color:var(--gold); }
+  .kpi .l { font-size:11px; color:#B8C4D6; margin-bottom:6px; font-weight:600; }
+  .kpi .v { font-size:22px; font-weight:800; font-family:'Outfit',sans-serif; }
+  .note { font-size:11px; color:#8A94A2; margin-top:10px; }
+  .foot { text-align:center; font-size:11px; color:#9AA5B2; margin-top:30px; }
+  .r { text-align:right; } .b { font-weight:700; }
+  details.key summary { cursor:pointer; font-size:13px; font-weight:600; color:var(--navy); }
+  .keyrow { display:flex; gap:8px; margin-top:10px; }
+  .keyrow input { flex:1; }
+  @media(max-width:560px){ .grid2,.kpis{grid-template-columns:1fr 1fr;} h1{font-size:26px;} }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel">
+const { useState, useMemo, useCallback, useRef, useEffect } = React;
+
+const SQM = 3.30579;
+const num = v => { const n = typeof v==='string'? parseFloat(v.replace(/,/g,'')):Number(v); return Number.isFinite(n)?n:0; };
+const fmt = n => num(n).toLocaleString('ja-JP',{maximumFractionDigits:0});
+const pct = n => num(n).toFixed(2)+'%';
+const NAVY='#0B2545', GOLD='#C8922A';
+
+const toB64 = file => new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]); r.onerror=()=>rej(new Error('read failed')); r.readAsDataURL(file); });
+const mediaType = f => ({pdf:'application/pdf',jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',webp:'image/webp'})[f.name.split('.').pop().toLowerCase()]||null;
+const blankRoom = () => ({floorRoom:'',areaSqm:0,madori:'',rentCurrentUnit:0,rentFullUnit:0,kyoekiCurrentUnit:0,kyoekiFullUnit:0,_ai:false});
+
+function App(){
+  const [apiKey,setApiKey] = useState(()=>{ try{return localStorage.getItem('anthropic_key')||'';}catch(e){return '';} });
+  const saveKey = k => { setApiKey(k); try{ localStorage.setItem('anthropic_key',k); }catch(e){} };
+
+  const [info,setInfo] = useState({name:'',price:46000000,landAreaTsubo:0,builtYear:0,floorAreaTsubo:0});
+  const [exp,setExp] = useState({propertyTax:0,buildingManagement:0,utilities:0,rentManagement:0,parkingIncome:0});
+  const [pur,setPur] = useState({mgmtFeeRate:5,loanAmount:36800000,loanRate1:3.0,loanTerm1:27,loanRate2:3.0,loanTerm2:22});
+  const [rooms,setRooms] = useState([blankRoom()]);
+  const [ai,setAi] = useState({});
+  const [files,setFiles] = useState([]);
+  const [over,setOver] = useState(false);
+  const [status,setStatus] = useState(null);
+  const [busy,setBusy] = useState(false);
+  const fileInput = useRef(null);
+
+  const uI=(k,v)=>setInfo(p=>({...p,[k]:v}));
+  const uE=(k,v)=>setExp(p=>({...p,[k]:v}));
+  const uP=(k,v)=>setPur(p=>({...p,[k]:v}));
+  const uR=(i,k,v)=>setRooms(rs=>rs.map((r,x)=>x===i?{...r,[k]:v}:r));
+  const addRoom=()=>setRooms(rs=>[...rs,blankRoom()]);
+  const delRoom=i=>setRooms(rs=>rs.filter((_,x)=>x!==i));
+
+  const repay=(p,rate,y)=>{ if(!p||!y)return 0; if(!rate)return p/y; const r=rate/100/12,n=y*12; return p*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1)*12; };
+
+  const calc = useMemo(()=>{
+    const price=num(info.price);
+    const sum=k=>rooms.reduce((s,u)=>s+num(u[k]),0);
+    const curM=sum('rentCurrentUnit')+sum('kyoekiCurrentUnit');
+    const fullM=sum('rentFullUnit')+sum('kyoekiFullUnit');
+    const pk=num(exp.parkingIncome);
+    const curInc=curM*12+pk, fullInc=fullM*12+pk;
+    const autoMgmt=Math.round(fullInc*num(pur.mgmtFeeRate)/100);
+    const rentMgmt=num(exp.rentManagement)||autoMgmt;
+    const annExp=num(exp.propertyTax)+num(exp.buildingManagement)+num(exp.utilities)+rentMgmt;
+    const curNoi=curInc-annExp, fullNoi=fullInc-annExp;
+    return {
+      price,curM,fullM,curInc,fullInc,rentMgmt,annExp,curNoi,fullNoi,
+      curYield:price>0?curNoi/price*100:0, fullYield:price>0?fullNoi/price*100:0,
+      grossYield:price>0?fullInc/price*100:0, expRatio:fullInc>0?annExp/fullInc*100:0,
+      loans:[
+        {label:`${pur.loanTerm1}年/${pur.loanRate1}%`,repay:repay(num(pur.loanAmount),num(pur.loanRate1),num(pur.loanTerm1))},
+        {label:`${pur.loanTerm2}年/${pur.loanRate2}%`,repay:repay(num(pur.loanAmount),num(pur.loanRate2),num(pur.loanTerm2))},
+      ].map(l=>({...l,curCf:curNoi-l.repay,fullCf:fullNoi-l.repay}))
+    };
+  },[info,exp,pur,rooms]);
+
+  const onFiles = list => {
+    const ok=['pdf','jpg','jpeg','png','webp','xlsx','xls','csv'];
+    setFiles(p=>[...p,...Array.from(list).filter(f=>ok.includes(f.name.split('.').pop().toLowerCase()))]);
+  };
+
+  const analyze = useCallback(async()=>{
+    if(!apiKey){ setStatus({msg:'先にAPIキーを入力・保存してください',type:'warn'}); return; }
+    if(!files.length){ setStatus({msg:'先に資料をアップロードしてください',type:'warn'}); return; }
+    setBusy(true); setStatus({msg:'ファイルを準備中...',type:'info',spin:true});
+    try{
+      const prompt=`あなたは不動産投資の収支分析の専門家です。添付資料（物件概要書・レントロール・収支表など）を読み取り、以下のJSON形式のみで回答（前後に余分なテキスト・Markdown不要）：
+{"name":"物件名(文字列,不明null)","purchasePrice":数値(円),"landAreaTsubo":数値(㎡は÷3.30579で坪換算),"builtYear":数値(西暦),"floorAreaTsubo":数値(坪),"propertyTax":数値(固都税年額円),"buildingManagement":数値(建物管理費年額円),"utilities":数値(水道光熱年額円),"parkingIncome":数値(駐車場収入年額円),"rooms":[{"floorRoom":"階-号室","areaSqm":数値,"madori":"文字列","rentCurrentUnit":数値(空室0),"rentFullUnit":数値(満室想定),"kyoekiCurrentUnit":数値,"kyoekiFullUnit":数値}]}
+不明はnull。数値カンマなし。駐車場はroomsに含めずparkingIncomeに年額集計。共益費込み賃料なら賃料側に含め共益費0に。`;
+      const parts=[{type:'text',text:prompt}];
+      for(const f of files){
+        setStatus({msg:`${f.name} を変換中...`,type:'info',spin:true});
+        const mt=mediaType(f);
+        if(mt==='application/pdf'){ parts.push({type:'document',source:{type:'base64',media_type:'application/pdf',data:await toB64(f)}}); }
+        else if(mt&&mt.startsWith('image/')){ parts.push({type:'image',source:{type:'base64',media_type:mt,data:await toB64(f)}}); }
+        else { parts.push({type:'text',text:`[添付: ${f.name}（Excel/CSV。ファイル名と一般様式から推定解析）]`}); }
+      }
+      setStatus({msg:`AIが解析中...（${files.length}件）`,type:'info',spin:true});
+      const resp=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,messages:[{role:'user',content:parts}]})
+      });
+      if(!resp.ok){ const e=await resp.json().catch(()=>({})); throw new Error(e.error?.message||`API Error ${resp.status}`); }
+      const data=await resp.json();
+      const raw=data.content.filter(c=>c.type==='text').map(c=>c.text).join('');
+      const m=raw.match(/\{[\s\S]*\}/); if(!m) throw new Error('応答からJSON抽出に失敗');
+      const ex=JSON.parse(m[0]); const na={};
+      setInfo(p=>{const n={...p};
+        if(ex.name!=null){n.name=ex.name;na.name=1;}
+        if(ex.purchasePrice!=null){n.price=ex.purchasePrice;na.price=1;}
+        if(ex.landAreaTsubo!=null){n.landAreaTsubo=Math.round(ex.landAreaTsubo*100)/100;na.landAreaTsubo=1;}
+        if(ex.builtYear!=null){n.builtYear=ex.builtYear;na.builtYear=1;}
+        if(ex.floorAreaTsubo!=null){n.floorAreaTsubo=Math.round(ex.floorAreaTsubo*100)/100;na.floorAreaTsubo=1;}
+        return n;});
+      setExp(p=>{const n={...p};
+        if(ex.propertyTax!=null){n.propertyTax=ex.propertyTax;na.propertyTax=1;}
+        if(ex.buildingManagement!=null){n.buildingManagement=ex.buildingManagement;na.buildingManagement=1;}
+        if(ex.utilities!=null){n.utilities=ex.utilities;na.utilities=1;}
+        if(ex.parkingIncome!=null){n.parkingIncome=ex.parkingIncome;na.parkingIncome=1;}
+        return n;});
+      if(Array.isArray(ex.rooms)&&ex.rooms.length){
+        setRooms(ex.rooms.map(r=>({floorRoom:r.floorRoom??'',areaSqm:num(r.areaSqm),madori:r.madori??'',
+          rentCurrentUnit:num(r.rentCurrentUnit),rentFullUnit:num(r.rentFullUnit)||num(r.rentCurrentUnit),
+          kyoekiCurrentUnit:num(r.kyoekiCurrentUnit),kyoekiFullUnit:num(r.kyoekiFullUnit)||num(r.kyoekiCurrentUnit),_ai:true})));
+      }
+      setAi(na); setStatus({msg:'✓ 解析完了。黄色の項目はAI入力箇所です（確認・修正してください）',type:'ok'});
+    }catch(e){ setStatus({msg:`エラー: ${e.message}`,type:'error'}); }
+    finally{ setBusy(false); }
+  },[apiKey,files]);
+
+  const aiS = k => ai[k]?'in ai':'in';
+
+  return (
+    <div className="wrap">
+      <div className="kicker">OFFICIAL ONE / 不動産投資ツール</div>
+      <h1>不動産収支分析 AI</h1>
+      <p className="sub">物件概要書・レントロール・収支表（PDF / 画像 / Excel）をアップロードすると、AIが自動で読み取り収支表を作成します。</p>
+
+      <div className="card">
+        <div className="ctitle">APIキー設定</div>
+        <details className="key" open={!apiKey}>
+          <summary>{apiKey?'APIキーは保存済みです（変更する）':'AnthropicのAPIキーを入力してください'}</summary>
+          <div className="keyrow">
+            <input className="in" type="password" placeholder="sk-ant-..." defaultValue={apiKey}
+              onChange={e=>saveKey(e.target.value.trim())} />
+          </div>
+          <p className="note">キーはこのブラウザ内（localStorage）にのみ保存され、外部には送信されません（Anthropic APIへの認証のみに使用）。各自ご自身のキーをご用意ください。取得は console.anthropic.com から。</p>
+        </details>
+      </div>
+
+      <div className="card">
+        <div className="ctitle">1. 資料をアップロード</div>
+        <div className={'drop'+(over?' over':'')}
+          onDragOver={e=>{e.preventDefault();setOver(true);}} onDragLeave={()=>setOver(false)}
+          onDrop={e=>{e.preventDefault();setOver(false);onFiles(e.dataTransfer.files);}}
+          onClick={()=>fileInput.current?.click()}>
+          <div style={{fontSize:30,marginBottom:6}}>📄</div>
+          <b>ここにドラッグ＆ドロップ　/　クリックして選択</b><br/>
+          <small>PDF・JPG・PNG・Excel・CSV（複数可）</small>
+          <input ref={fileInput} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.xlsx,.xls,.csv"
+            style={{display:'none'}} onChange={e=>onFiles(e.target.files)} />
+        </div>
+        {files.length>0 && <div style={{marginTop:12}}>{files.map((f,i)=>(
+          <span className="chip" key={i}>{f.name}<button onClick={()=>setFiles(p=>p.filter((_,x)=>x!==i))}>×</button></span>
+        ))}</div>}
+        <button className="btn" disabled={busy} onClick={analyze}>{busy?'解析中...':'AIで収支表を生成する'}</button>
+        {status && <div className={'status st-'+status.type}>{status.spin&&<span className="spin"></span>}{status.msg}</div>}
+      </div>
+
+      <div className="card">
+        <div className="ctitle">2. 物件情報</div>
+        <div className="grid2">
+          <div className="full"><label className="fl">物件名</label><input className={aiS('name')} value={info.name} onChange={e=>uI('name',e.target.value)} /></div>
+          <div><label className="fl">購入金額（円）</label><input type="number" className={aiS('price')} value={info.price} onChange={e=>uI('price',e.target.value)} /></div>
+          <div><label className="fl">築年（西暦）</label><input type="number" className={aiS('builtYear')} value={info.builtYear} onChange={e=>uI('builtYear',e.target.value)} /></div>
+          <div><label className="fl">土地面積（坪）</label><input type="number" className={aiS('landAreaTsubo')} value={info.landAreaTsubo} onChange={e=>uI('landAreaTsubo',e.target.value)} /></div>
+          <div><label className="fl">延床面積（坪）</label><input type="number" className={aiS('floorAreaTsubo')} value={info.floorAreaTsubo} onChange={e=>uI('floorAreaTsubo',e.target.value)} /></div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="ctitle"><span>3. 部屋ごとの賃料（レントロール）</span><button className="ghost" onClick={addRoom}>＋ 部屋を追加</button></div>
+        <div style={{overflowX:'auto'}}>
+        <table>
+          <thead><tr>{['階-号室','面積㎡','坪','間取り','現況賃料','現況共益','満室賃料','満室共益',''].map(h=><th key={h}>{h}</th>)}</tr></thead>
+          <tbody>{rooms.map((r,i)=>(
+            <tr key={i} style={r._ai?{background:'#FFFCF0'}:{}}>
+              <td><input value={r.floorRoom} onChange={e=>uR(i,'floorRoom',e.target.value)} /></td>
+              <td><input type="number" className="num" value={r.areaSqm} onChange={e=>uR(i,'areaSqm',num(e.target.value))} /></td>
+              <td className="r" style={{color:'#6B7785',fontSize:12}}>{(num(r.areaSqm)/SQM).toFixed(2)}</td>
+              <td><input value={r.madori} onChange={e=>uR(i,'madori',e.target.value)} /></td>
+              <td><input type="number" className="num" value={r.rentCurrentUnit} onChange={e=>uR(i,'rentCurrentUnit',num(e.target.value))} /></td>
+              <td><input type="number" className="num" value={r.kyoekiCurrentUnit} onChange={e=>uR(i,'kyoekiCurrentUnit',num(e.target.value))} /></td>
+              <td><input type="number" className="num" value={r.rentFullUnit} onChange={e=>uR(i,'rentFullUnit',num(e.target.value))} /></td>
+              <td><input type="number" className="num" value={r.kyoekiFullUnit} onChange={e=>uR(i,'kyoekiFullUnit',num(e.target.value))} /></td>
+              <td><button className="delx" onClick={()=>delRoom(i)}>×</button></td>
+            </tr>))}
+          </tbody>
+          <tfoot><tr style={{background:'#F1F4F8',fontWeight:700}}>
+            <td colSpan={4}>月額合計</td><td className="r" colSpan={2}>現況 {fmt(calc.curM)}</td><td className="r" colSpan={2}>満室 {fmt(calc.fullM)}</td><td></td>
+          </tr></tfoot>
+        </table>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="ctitle">4. 年間支出・その他収入</div>
+        <div className="grid2">
+          <div><label className="fl">固都税（年・円）</label><input type="number" className={aiS('propertyTax')} value={exp.propertyTax} onChange={e=>uE('propertyTax',e.target.value)} /></div>
+          <div><label className="fl">建物管理費（年・円）</label><input type="number" className={aiS('buildingManagement')} value={exp.buildingManagement} onChange={e=>uE('buildingManagement',e.target.value)} /></div>
+          <div><label className="fl">水道光熱（年・円）</label><input type="number" className={aiS('utilities')} value={exp.utilities} onChange={e=>uE('utilities',e.target.value)} /></div>
+          <div><label className="fl">賃貸管理（年・円, 0で自動）</label><input type="number" className="in" value={exp.rentManagement} placeholder={'自動 '+fmt(calc.rentMgmt)} onChange={e=>uE('rentManagement',e.target.value)} /></div>
+          <div><label className="fl">駐車場収入（年・円）</label><input type="number" className={aiS('parkingIncome')} value={exp.parkingIncome} onChange={e=>uE('parkingIncome',e.target.value)} /></div>
+          <div><label className="fl">賃貸管理料率（%）</label><input type="number" className="in" value={pur.mgmtFeeRate} onChange={e=>uP('mgmtFeeRate',e.target.value)} /></div>
+        </div>
+      </div>
+
+      <div className="card dark">
+        <div className="ctitle">5. 収支サマリー</div>
+        <div className="kpis">
+          <div className="kpi"><div className="l">表面利回り</div><div className="v" style={{color:'#fff'}}>{pct(calc.grossYield)}</div></div>
+          <div className="kpi acc"><div className="l">NOI利回り（満室）</div><div className="v" style={{color:GOLD}}>{pct(calc.fullYield)}</div></div>
+          <div className="kpi"><div className="l">NOI利回り（現況）</div><div className="v" style={{color:'#fff'}}>{pct(calc.curYield)}</div></div>
+          <div className="kpi"><div className="l">経費率</div><div className="v" style={{color:'#fff'}}>{pct(calc.expRatio)}</div></div>
+        </div>
+        <table style={{marginTop:16,color:'#fff'}}>
+          <thead><tr><th></th><th className="r">現況</th><th className="r">満室想定</th></tr></thead>
+          <tbody>
+            <tr><td>年間総収入</td><td className="r">{fmt(calc.curInc)}</td><td className="r">{fmt(calc.fullInc)}</td></tr>
+            <tr><td>年間総支出</td><td className="r">{fmt(calc.annExp)}</td><td className="r">{fmt(calc.annExp)}</td></tr>
+            <tr><td className="b">NOI（純収益）</td><td className="r b">{fmt(calc.curNoi)}</td><td className="r b" style={{color:GOLD}}>{fmt(calc.fullNoi)}</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div className="card">
+        <div className="ctitle">6. ローン返済・キャッシュフロー</div>
+        <div className="grid2">
+          <div><label className="fl">借入額（円）</label><input type="number" className="in" value={pur.loanAmount} onChange={e=>uP('loanAmount',e.target.value)} /></div>
+          <div></div>
+          <div><label className="fl">シナリオA 期間（年）</label><input type="number" className="in" value={pur.loanTerm1} onChange={e=>uP('loanTerm1',e.target.value)} /></div>
+          <div><label className="fl">シナリオA 金利（%）</label><input type="number" step="0.1" className="in" value={pur.loanRate1} onChange={e=>uP('loanRate1',e.target.value)} /></div>
+          <div><label className="fl">シナリオB 期間（年）</label><input type="number" className="in" value={pur.loanTerm2} onChange={e=>uP('loanTerm2',e.target.value)} /></div>
+          <div><label className="fl">シナリオB 金利（%）</label><input type="number" step="0.1" className="in" value={pur.loanRate2} onChange={e=>uP('loanRate2',e.target.value)} /></div>
+        </div>
+        <div style={{overflowX:'auto',marginTop:14}}>
+        <table>
+          <thead><tr>{['シナリオ','年間返済','年CF(現況)','年CF(満室)','月CF(現況)','月CF(満室)'].map(h=><th key={h} className="r">{h}</th>)}</tr></thead>
+          <tbody>{calc.loans.map((l,i)=>(
+            <tr key={i}>
+              <td>{l.label}</td>
+              <td className="r">{fmt(l.repay)}</td>
+              <td className="r b" style={{color:l.curCf<0?'#C0392B':NAVY}}>{fmt(l.curCf)}</td>
+              <td className="r b" style={{color:l.fullCf<0?'#C0392B':NAVY}}>{fmt(l.fullCf)}</td>
+              <td className="r">{fmt(l.curCf/12)}</td>
+              <td className="r">{fmt(l.fullCf/12)}</td>
+            </tr>))}
+          </tbody>
+        </table>
+        </div>
+        <p className="note">※ 元利均等返済で試算。実際の融資条件・諸経費は別途ご確認ください。</p>
+      </div>
+
+      <div className="foot">むってぃ オンラインサロン 不動産ツール</div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
